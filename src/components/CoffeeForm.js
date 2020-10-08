@@ -1,8 +1,11 @@
 import React, {useState,useEffect} from 'react'
 import * as yup from 'yup';
 import axios from 'axios';
+import Order from './Order'
 
-const CoffeeForm = () => {
+const CoffeeForm = (props) => {
+
+    console.log(props)
 
     const [formState,setFormState] = useState({
         name:"",
@@ -39,63 +42,45 @@ const CoffeeForm = () => {
 
     const [errors,setErrors] = useState({
         name:"",
-        phone:"",
-        coffeeType:{
-            regular:false,
-            latte:false,
-            americano:false,
-            flatWhite:false,
-            cappucino:false,
-            espresso:false
-        },
-        temp:{
-            hot:false,
-            iced:false
-        },
-        milkChoice:{
-            none:false,
-            regular:false,
-            soy:false,
-            oat:false,
-            almond:false,
-            nonfat:false,
-            skim:false
-        },
-        additions:{
-            noFoam:false,
-            cinnamon:false,
-            whippedCream:false,
-            caramel:false
-        },
-        specialInstructions:""
+        phone:""
     })
     const [isDisabled,setIsDisabled] = useState(true)
 
-    useEffect(() =>{
-        formSchema.isValid(formState).then(valid => setIsDisabled(!valid));
-    },[formState])
 
     // inputChange function 
     const inputChange = (e) =>{
-       e.persist();
-       validateChanges(e);
-       setFormState({...formState, [e.target.name]:e.target.type==="checkbox" ? e.target.checked : e.target.value})
-    }
+       if (e.target.type === 'checkbox'){
+           setFormState({...formState, additions: {
+               ...formState.additions, [e.target.value]:e.target.checked
+           }})
+        }else{
+               setFormState({...formState,[e.target.name]:e.target.value})
+        }if (e.target.name === "name"){
+               //validate
+               validateChanges(e)
+           }
+       }
+
 
     //submitForm function
     // this will also post to DB
     const submitForm = (e) =>{
         e.preventDefault();
         axios.post("https://reqres.in/api/users",formState)
-        .then(res => console.log("res",res))
+        .then(res => props.addOrder(res.data))
         .catch(err => console.log(err))
     }
 
 
     //validatechanges using form Schema 
 
+    useEffect(() =>{
+        formSchema.isValid(formState).then(valid => setIsDisabled(!valid));
+    },[ formState ])
+    
     const validateChanges = (e) =>{
-        yup.reach(formSchema,e.target.name).validate(e.target.type==="checkbox"?e.target.checked : e.target.value)
+        e.persist()
+        yup.reach(formSchema,e.target.name).validate(e.target.value)
         .then(valid => setErrors({...errors,[e.target.name]:''}))
         .catch(err => setErrors({...errors,[e.target.name]:err.errors[0]}))
     }
@@ -104,15 +89,10 @@ const CoffeeForm = () => {
     const phoneRegExp = /^((\\+[1-9]{1,4}[ \\-]*)|(\\([0-9]{2,3}\\)[ \\-]*)|([0-9]{2,4})[ \\-]*)*?[0-9]{3,4}?[ \\-]*[0-9]{3,4}?$/
 
     const formSchema = yup.object().shape({
-        name:yup.string().required("Please enter your name").min(2,"That\'s not a valid input"),
-        phone:yup.string().matches(phoneRegExp,'Phone number is not valid'),
-        coffeeType:yup.string(),
-        temp:yup.string(),
-        milkChoice:yup.string(),
-        additions:yup.string(),
-        specialInstructions:yup.string()
+        name:yup.string().required("Please enter your name").min(2,"That's not a valid input"),
+        phone:yup.string().matches(phoneRegExp,'Phone number is not valid')
     })
-
+    
     return (
         <div>
             <form onSubmit={submitForm}>
@@ -210,6 +190,11 @@ const CoffeeForm = () => {
                 </label><br/>
                 <button type="submit" disabled={isDisabled}>Order Coffee</button>
             </form>
+            <div>
+                {props.orders.map((order,index)=>{
+                    return <Order order={order} key={index}/>
+                })}
+            </div>
         </div>
     )
 }
